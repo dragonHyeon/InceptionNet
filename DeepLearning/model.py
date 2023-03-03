@@ -1,118 +1,99 @@
 import torch
 import torch.nn as nn
 
-from DeepLearning.layer import BasicBlock, BottleNeck
+from DeepLearning.layer import BasicConv2d, Inception
 
 
-class ResNet(nn.Module):
-    def __init__(self, block_type, num_blocks_list, in_channels=3, num_classes=100, init_weights=True):
+class GoogLeNet(nn.Module):
+    def __init__(self, in_channels=3, num_classes=100, init_weights=True):
         """
         * 모델 구조 정의
-        :param block_type: BasicBlock / BottleNeck 선택
-        :param num_blocks_list: 스테이지 당 블록 몇 개씩 쌓을지
+        :param in_channels: in_channels 수
         :param num_classes: 출력 클래스 개수
         :param init_weights: 가중치 초기화 여부
         """
 
-        super(ResNet, self).__init__()
+        super(GoogLeNet, self).__init__()
 
-        # (N, in_channels (3), H, W) -> (N, 64, H/2, W/2)
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_channels=in_channels, out_channels=64, kernel_size=3, stride=1, padding=1, bias=True),
-            nn.BatchNorm2d(num_features=64),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        # (N, in_channels (3), H (224), W (224)) -> (N, 192, 28, 28)
+        self.stem = nn.Sequential(
+            # (N, in_channels (3), H (224), W (224)) -> (N, 64, 112, 112)
+            BasicConv2d(in_channels=in_channels, out_channels=64, kernel_size=7, stride=2, padding=3),
+            # (N, 64, 112, 112) -> (N, 64, 56, 56)
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=0, ceil_mode=True),
+            # (N, 64, 56, 56) -> (N, 64, 56, 56)
+            BasicConv2d(in_channels=64, out_channels=64, kernel_size=1, stride=1, padding=0),
+            # (N, 64, 56, 56) -> (N, 192, 56, 56)
+            BasicConv2d(in_channels=64, out_channels=192, kernel_size=3, stride=1, padding=1),
+            # (N, 192, 56, 56) -> (N, 192, 28, 28)
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=0, ceil_mode=True)
         )
 
-        # (N, 64, H/2, W/2) -> (N, 64*block_type.expansion, H/2, W/2)
-        self.stage1 = self._make_layer(block_type=block_type,
-                                       num_blocks=num_blocks_list[0],
-                                       in_channels=64,
-                                       out_channels=64,
-                                       stride=1)
+        # (N, 192, 28, 28) -> (N, 480, 14, 14)
+        self.stage1 = nn.Sequential(
+            # (N, 192, 28, 28) -> (N, 256, 28, 28)
+            Inception(in_channels=192, ch1x1=64, ch3x3red=96, ch3x3=128, ch5x5red=16, ch5x5=32, pool_proj=32),
+            # (N, 256, 28, 28) -> (N, 480, 28, 28)
+            Inception(in_channels=256, ch1x1=128, ch3x3red=128, ch3x3=192, ch5x5red=32, ch5x5=96, pool_proj=64),
+            # (N, 480, 28, 28) -> (N, 480, 14, 14)
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=0, ceil_mode=True)
+        )
 
-        # (N, 64*block_type.expansion, H/2, W/2) -> (N, 128*block_type.expansion, H/4, W/4)
-        self.stage2 = self._make_layer(block_type=block_type,
-                                       num_blocks=num_blocks_list[1],
-                                       in_channels=64 * block_type.expansion,
-                                       out_channels=128,
-                                       stride=2)
+        # (N, 480, 14, 14) -> (N, 832, 7, 7)
+        self.stage2 = nn.Sequential(
+            # (N, 480, 14, 14) -> (N, 512, 14, 14)
+            Inception(in_channels=480, ch1x1=192, ch3x3red=96, ch3x3=208, ch5x5red=16, ch5x5=48, pool_proj=64),
+            # (N, 512, 14, 14) -> (N, 512, 14, 14)
+            Inception(in_channels=512, ch1x1=160, ch3x3red=112, ch3x3=224, ch5x5red=24, ch5x5=64, pool_proj=64),
+            # (N, 512, 14, 14) -> (N, 512, 14, 14)
+            Inception(in_channels=512, ch1x1=128, ch3x3red=128, ch3x3=256, ch5x5red=24, ch5x5=64, pool_proj=64),
+            # (N, 512, 14, 14) -> (N, 512, 14, 14)
+            Inception(in_channels=512, ch1x1=112, ch3x3red=144, ch3x3=288, ch5x5red=32, ch5x5=64, pool_proj=64),
+            # (N, 528, 14, 14) -> (N, 832, 14, 14)
+            Inception(in_channels=528, ch1x1=256, ch3x3red=160, ch3x3=320, ch5x5red=32, ch5x5=128, pool_proj=128),
+            # (N, 832, 14, 14) -> (N, 832, 7, 7)
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0, ceil_mode=True)
+        )
 
-        # (N, 128*block_type.expansion, H/4, W/4) -> (N, 256*block_type.expansion, H/8, W/8)
-        self.stage3 = self._make_layer(block_type=block_type,
-                                       num_blocks=num_blocks_list[2],
-                                       in_channels=128 * block_type.expansion,
-                                       out_channels=256,
-                                       stride=2)
+        # (N, 832, 7, 7) -> (N, 1024, 7, 7)
+        self.stage3 = nn.Sequential(
+            # (N, 832, 7, 7) -> (N, 832, 7, 7)
+            Inception(in_channels=832, ch1x1=256, ch3x3red=160, ch3x3=320, ch5x5red=32, ch5x5=128, pool_proj=128),
+            # (N, 832, 7, 7) -> (N, 1024, 7, 7)
+            Inception(in_channels=832, ch1x1=384, ch3x3red=192, ch3x3=384, ch5x5red=48, ch5x5=128, pool_proj=128)
+        )
 
-        # (N, 256*block_type.expansion, H/8, W/8) -> (N, 512*block_type.expansion, H/16, W/16)
-        self.stage4 = self._make_layer(block_type=block_type,
-                                       num_blocks=num_blocks_list[3],
-                                       in_channels=256 * block_type.expansion,
-                                       out_channels=512,
-                                       stride=2)
-
-        # (N, 512*block_type.expansion, H/16, W/16) -> (N, 512*block_type.expansion, 1, 1)
+        # (N, 1024, 7, 7) -> (N, 1024, 1, 1)
         self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
-
-        # (N, 512*block_type.expansion) -> (N, num_classes (100))
-        self.fc = nn.Linear(in_features=512 * block_type.expansion,
-                            out_features=num_classes,
-                            bias=True)
+        self.dropout = nn.Dropout(p=0.2)
+        # (N, 1024) -> (N, num_classes (100))
+        self.fc = nn.Linear(in_features=1024, out_features=num_classes, bias=True)
 
         # 가중치 초기화
         if init_weights:
             self._initialize_weights()
 
-    @staticmethod
-    def _make_layer(block_type, num_blocks, in_channels, out_channels, stride):
-        """
-        * Residual Block 모음 만들기
-        :param block_type: BasicBlock / BottleNeck 선택
-        :param num_blocks: 해당 스테이지 블록 몇 개 쌓을지
-        :param in_channels: in_channels 수
-        :param out_channels: out_channels 수
-        :param stride: stride 값
-        :return: Residual Block 모음
-        """
-
-        # Residual Block 모음 담을 리스트
-        layers = list()
-
-        # convolution block 담기
-        layers.append(block_type(in_channels=in_channels, out_channels=out_channels, stride=stride))
-
-        # in_channels 값 갱신
-        in_channels = out_channels * block_type.expansion
-
-        # identity block 담기
-        for _ in range(num_blocks - 1):
-            layers.append(block_type(in_channels=in_channels, out_channels=out_channels, stride=1))
-
-        return nn.Sequential(*layers)
-
     def forward(self, x):
         """
         * 순전파
-        :param x: 배치 개수 만큼의 입력. (N, in_channels (3), H, W)
+        :param x: 배치 개수 만큼의 입력. (N, in_channels (3), H (224), W (224))
         :return: 배치 개수 만큼의 출력. (N, num_classes (100))
         """
 
-        # (N, in_channels (3), H, W) -> (N, 64, H/2, W/2)
-        out = self.conv(x)
-        # (N, 64, H/2, W/2) -> (N, 64*block_type.expansion, H/2, W/2)
+        # (N, in_channels (3), H (224), W (224)) -> (N, 192, 28, 28)
+        out = self.stem(x)
+        # (N, 192, 28, 28) -> (N, 480, 14, 14)
         out = self.stage1(out)
-        # (N, 64*block_type.expansion, H/2, W/2) -> (N, 128*block_type.expansion, H/4, W/4)
+        # (N, 480, 14, 14) -> (N, 832, 7, 7)
         out = self.stage2(out)
-        # (N, 128*block_type.expansion, H/4, W/4) -> (N, 256*block_type.expansion, H/8, W/8)
+        # (N, 832, 7, 7) -> (N, 1024, 7, 7)
         out = self.stage3(out)
-        # (N, 256*block_type.expansion, H/8, W/8) -> (N, 512*block_type.expansion, H/16, W/16)
-        out = self.stage4(out)
-        # (N, 512*block_type.expansion, H/16, W/16) -> (N, 512*block_type.expansion, 1, 1)
+        # (N, 1024, 7, 7) -> (N, 1024, 1, 1)
         out = self.avgpool(out)
-        # (N, 512*block_type.expansion, 1, 1) -> (N, 512*block_type.expansion*1*1)
+        # (N, 1024, 1, 1) -> (N, 1024 * 1 * 1)
         out = torch.flatten(out, 1)
-        # (N, 512*block_type.expansion) -> (N, num_classes (100))
+        out = self.dropout(out)
+        # (N, 1024) -> (N, num_classes (100))
         out = self.fc(out)
 
         return out
@@ -134,21 +115,3 @@ class ResNet(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(tensor=m.weight, mean=0, std=0.01)
                 nn.init.constant_(tensor=m.bias, val=0)
-
-
-def resnet18():
-    """
-    * ResNet-18
-    :return: ResNet 18-layer 모델
-    """
-
-    return ResNet(block_type=BasicBlock, num_blocks_list=[2, 2, 2, 2])
-
-
-def resnet50():
-    """
-    * ResNet-50
-    :return: ResNet 50-layer 모델
-    """
-
-    return ResNet(block_type=BottleNeck, num_blocks_list=[3, 4, 6, 3])
