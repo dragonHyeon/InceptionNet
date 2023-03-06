@@ -136,7 +136,7 @@ class GoogLeNet(nn.Module):
         # auxiliary classifier 있는 경우 및 학습 시점
         if self.aux_logits and self.training:
             return aux1, aux2, out
-        # auxiliary classifier 없는 경우
+        # auxiliary classifier 없는 경우 혹은 테스트 시점
         else:
             return out
 
