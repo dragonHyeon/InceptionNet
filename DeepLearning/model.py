@@ -99,7 +99,7 @@ class GoogLeNet(nn.Module):
 
         # (N, 480, 14, 14) -> (N, 512, 14, 14)
         out = self.inception4a(out)
-        # auxiliary classifier 있는 경우
+        # auxiliary classifier 있는 경우 및 학습 시점
         if self.aux_logits and self.training:
             # (N, 512, 14, 14) -> (N, num_classes (100))
             aux1 = self.aux1(out)
@@ -110,7 +110,7 @@ class GoogLeNet(nn.Module):
         out = self.inception4c(out)
         # (N, 512, 14, 14) -> (N, 528, 14, 14)
         out = self.inception4d(out)
-        # auxiliary classifier 있는 경우
+        # auxiliary classifier 있는 경우 및 학습 시점
         if self.aux_logits and self.training:
             # (N, 528, 14, 14) -> (N, num_classes (100))
             aux2 = self.aux2(out)
@@ -133,7 +133,7 @@ class GoogLeNet(nn.Module):
         # (N, 1024) -> (N, num_classes (100))
         out = self.fc(out)
 
-        # auxiliary classifier 있는 경우
+        # auxiliary classifier 있는 경우 및 학습 시점
         if self.aux_logits and self.training:
             return aux1, aux2, out
         # auxiliary classifier 없는 경우
