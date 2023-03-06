@@ -76,14 +76,14 @@ def run_program(args):
     from Common import ConstVar
     from DeepLearning.test import Tester
     from DeepLearning.dataloader import CIFAR100_test
-    from DeepLearning.model import resnet18
+    from DeepLearning.model import GoogLeNet
     from DeepLearning.metric import accuracy
 
     # GPU / CPU 설정
     device = ConstVar.DEVICE_CUDA if torch.cuda.is_available() else ConstVar.DEVICE_CPU
 
     # 모델 선언
-    model = resnet18()
+    model = GoogLeNet()
     # 모델을 해당 디바이스로 이동
     model.to(device)
 

@@ -69,6 +69,46 @@ class Inception(nn.Module):
         return out
 
 
+class InceptionAux(nn.Module):
+    def __init__(self, in_channels, num_classes=100):
+        """
+        * InceptionAux 모듈 구조 정의
+        :param in_channels: in_channels 수
+        :param num_classes: 출력 클래스 개수
+        """
+
+        super(InceptionAux, self).__init__()
+
+        # (N, in_channels, H, W) -> (N, in_channels, 4, 4)
+        self.avgpool = nn.AdaptiveAvgPool2d(output_size=(4, 4))
+        # (N, in_channels, 4, 4) -> (N, 128, 4, 4)
+        self.conv = BasicConv2d(in_channels=in_channels, out_channels=128, kernel_size=1, stride=1, padding=0)
+        # (N, 2048) -> (N, 1024)
+        self.fc1 = nn.Linear(in_features=2048, out_features=1024, bias=True)
+        # (N, 1024) -> (N, num_classes (100))
+        self.fc2 = nn.Linear(in_features=1024, out_features=num_classes, bias=True)
+
+    def forward(self, x):
+        """
+        * 순전파
+        :param x: 배치 개수 만큼의 입력. (N, in_channels, H, W)
+        :return: 배치 개수 만큼의 출력. (N, num_classes (100))
+        """
+
+        # (N, in_channels, H, W) -> (N, in_channels, 4, 4)
+        out = self.avgpool(x)
+        # (N, in_channels, 4, 4) -> (N, 128, 4, 4)
+        out = self.conv(out)
+        # (N, 128, 4, 4) -> (N, 128 * 4 * 4)
+        out = torch.flatten(out, 1)
+        # (N, 2048) -> (N, 1024)
+        out = self.fc1(out)
+        # (N, 1024) -> (N, num_classes (100))
+        out = self.fc2(out)
+
+        return out
+
+
 class BasicConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
         """

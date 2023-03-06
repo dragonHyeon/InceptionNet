@@ -103,9 +103,16 @@ class Trainer:
             x = x.to(self.device)
             y = y.to(self.device)
 
-            # 순전파
-            y_pred = self.model(x)
-            loss = self.loss_fn(y_pred, y)
+            # auxiliary classifier 있는 경우
+            if self.model.aux_logits:
+                # 순전파
+                aux1, aux2, y_pred = self.model(x)
+                loss = self.loss_fn(aux1, y) * 0.3 + self.loss_fn(aux2, y) * 0.3 + self.loss_fn(y_pred, y)
+            # auxiliary classifier 없는 경우
+            else:
+                # 순전파
+                y_pred = self.model(x)
+                loss = self.loss_fn(y_pred, y)
 
             # 역전파
             self.optimizer.zero_grad()
