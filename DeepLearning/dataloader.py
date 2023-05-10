@@ -9,8 +9,7 @@ CIFAR100_train = CIFAR100(root=ConstVar.DATA_DIR_TRAIN,
                           transform=transforms.Compose([
                               transforms.Resize(size=ConstVar.RESIZE_SIZE),
                               transforms.ToTensor(),
-                              transforms.Normalize(mean=(0.5, 0.5, 0.5),
-                                                   std=(0.5, 0.5, 0.5))
+                              transforms.Normalize(mean=ConstVar.NORMALIZE_MEAN, std=ConstVar.NORMALIZE_STD)
                           ]),
                           download=True)
 
@@ -20,7 +19,6 @@ CIFAR100_test = CIFAR100(root=ConstVar.DATA_DIR_TEST,
                          transform=transforms.Compose([
                              transforms.Resize(size=ConstVar.RESIZE_SIZE),
                              transforms.ToTensor(),
-                             transforms.Normalize(mean=(0.5, 0.5, 0.5),
-                                                  std=(0.5, 0.5, 0.5))
+                             transforms.Normalize(mean=ConstVar.NORMALIZE_MEAN, std=ConstVar.NORMALIZE_STD)
                          ]),
                          download=True)
