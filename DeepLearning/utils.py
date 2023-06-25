@@ -9,7 +9,7 @@ def load_checkpoint(filepath):
     """
     * 체크포인트 불러오기
     :param filepath: 불러올 체크포인트 파일 경로
-    :return: state 모음 (model.state_dict(), optimizer.state_dict(), epoch)
+    :return: state 모음 (model.state_dict(), optimizer.state_dict(), epoch, score)
     """
 
     # state 불러오기
@@ -19,13 +19,14 @@ def load_checkpoint(filepath):
     return state
 
 
-def save_checkpoint(filepath, model, optimizer=None, epoch=None, is_best=False):
+def save_checkpoint(filepath, model, optimizer=None, epoch=None, score=None, is_best=False):
     """
     * 체크포인트 저장
     :param filepath: 저장될 체크포인트 파일 경로
     :param model: 저장될 모델
     :param optimizer: 저장될 optimizer
     :param epoch: 저장될 현재 학습 epoch 횟수
+    :param score: 저장될 현재 score
     :param is_best: 현재 저장하려는 모델이 가장 좋은 성능의 모델인지 여부
     :return: 체크포인트 파일 생성됨
     """
@@ -37,7 +38,8 @@ def save_checkpoint(filepath, model, optimizer=None, epoch=None, is_best=False):
     state = {
         ConstVar.KEY_STATE_MODEL: model.state_dict(),
         ConstVar.KEY_STATE_OPTIMIZER: optimizer.state_dict(),
-        ConstVar.KEY_STATE_EPOCH: epoch
+        ConstVar.KEY_STATE_EPOCH: epoch,
+        ConstVar.KEY_STATE_SCORE: score
     }
 
     # state 저장
@@ -77,3 +79,26 @@ def save_pics(pics_list, filepath, title):
 
     # 그림 저장
     plt.savefig(filepath)
+
+
+def idx_to_class(idx):
+    """
+    * idx 에 해당하는 class 가져오기
+    :param idx: classification 결과물 idx
+    :return: idx 에 해당하는 class 반환
+    """
+
+    # CIFAR-100 데이터셋 class 모음
+    class_list = ['apple', 'aquarium_fish', 'baby', 'bear', 'beaver', 'bed', 'bee', 'beetle', 'bicycle', 'bottle',
+                  'bowl', 'boy', 'bridge', 'bus', 'butterfly', 'camel', 'can', 'castle', 'caterpillar', 'cattle',
+                  'chair', 'chimpanzee', 'clock', 'cloud', 'cockroach', 'couch', 'crab', 'crocodile', 'cup', 'dinosaur',
+                  'dolphin', 'elephant', 'flatfish', 'forest', 'fox', 'girl', 'hamster', 'house', 'kangaroo',
+                  'keyboard', 'lamp', 'lawn_mower', 'leopard', 'lion', 'lizard', 'lobster', 'man', 'maple_tree',
+                  'motorcycle', 'mountain', 'mouse', 'mushroom', 'oak_tree', 'orange', 'orchid', 'otter', 'palm_tree',
+                  'pear', 'pickup_truck', 'pine_tree', 'plain', 'plate', 'poppy', 'porcupine', 'possum', 'rabbit',
+                  'raccoon', 'ray', 'road', 'rocket', 'rose', 'sea', 'seal', 'shark', 'shrew', 'skunk', 'skyscraper',
+                  'snail', 'snake', 'spider', 'squirrel', 'streetcar', 'sunflower', 'sweet_pepper', 'table', 'tank',
+                  'telephone', 'television', 'tiger', 'tractor', 'train', 'trout', 'tulip', 'turtle', 'wardrobe',
+                  'whale', 'willow_tree', 'wolf', 'woman', 'worm']
+
+    return class_list[idx]

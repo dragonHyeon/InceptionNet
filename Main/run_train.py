@@ -124,7 +124,6 @@ def run_program(args):
 
     from Common import ConstVar
     from DeepLearning.train import Trainer
-    from DeepLearning.test import Tester
     from DeepLearning.dataloader import CIFAR100_train, CIFAR100_test
     from DeepLearning.model import GoogLeNet
     from DeepLearning.loss import loss_fn
@@ -154,16 +153,15 @@ def run_program(args):
     trainer = Trainer(model=model,
                       optimizer=optimizer,
                       loss_fn=loss_fn,
+                      metric_fn=accuracy,
                       train_dataloader=train_dataloader,
+                      test_dataloader=test_dataloader,
                       device=device)
 
     # 모델 학습
     trainer.running(num_epoch=args.num_epoch,
                     output_dir=args.output_dir,
                     tracking_frequency=args.tracking_frequency,
-                    Tester=Tester,
-                    test_dataloader=test_dataloader,
-                    metric_fn=accuracy,
                     checkpoint_file=args.checkpoint_file)
 
 

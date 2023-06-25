@@ -43,18 +43,18 @@ def arguments():
                                      description="* Run this to test the model.")
 
     # parser 인자 목록 생성
-    # 테스트 데이터 디렉터리 설정
-    parser.add_argument("--test_data_dir",
+    # 입력 이미지 파일 경로
+    parser.add_argument("--input_path",
                         type=str,
-                        help='set test data directory',
-                        default=ConstVar.DATA_DIR_TEST,
-                        dest="test_data_dir")
+                        help='set input image file path',
+                        default=ConstVar.INPUT_PATH,
+                        dest='input_path')
 
     # 불러올 체크포인트 파일 경로
     parser.add_argument("--checkpoint_file",
                         type=str,
                         help='set checkpoint file to load if exists',
-                        default=None,
+                        default='../DATA/checkpoint/epoch00020.ckpt',
                         dest='checkpoint_file')
 
     # parsing 한거 가져오기
@@ -71,33 +71,30 @@ def run_program(args):
     """
 
     import torch
-    from torch.utils.data import DataLoader
 
     from Common import ConstVar
     from DeepLearning.test import Tester
-    from DeepLearning.dataloader import CIFAR100_test
     from DeepLearning.model import GoogLeNet
-    from DeepLearning.metric import accuracy
+    from DeepLearning import utils
 
     # GPU / CPU 설정
     device = ConstVar.DEVICE_CUDA if torch.cuda.is_available() else ConstVar.DEVICE_CPU
 
-    # 모델 선언
+    # 체크포인트 파일 불러오기
+    state = utils.load_checkpoint(filepath=args.checkpoint_file)
+
+    # 모델 선언 및 가중치 불러오기
     model = GoogLeNet()
+    model.load_state_dict(state[ConstVar.KEY_STATE_MODEL])
     # 모델을 해당 디바이스로 이동
     model.to(device)
 
-    # 테스트용 데이터로더 선언
-    test_dataloader = DataLoader(dataset=CIFAR100_test)
-
     # 모델 테스트 객체 선언
     tester = Tester(model=model,
-                    metric_fn=accuracy,
-                    test_dataloader=test_dataloader,
                     device=device)
 
     # 모델 테스트
-    tester.running(checkpoint_file=args.checkpoint_file)
+    tester.running(input_path=args.input_path)
 
 
 def main():

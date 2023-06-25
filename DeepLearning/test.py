@@ -1,68 +1,92 @@
-import numpy as np
-from tqdm import tqdm
+import torch
+from torchvision import transforms
+from PIL import Image
 
 from Common import ConstVar
 from DeepLearning import utils
 
 
 class Tester:
-    def __init__(self, model, metric_fn, test_dataloader, device):
+    def __init__(self, model, device):
         """
         * 테스트 관련 클래스
         :param model: 테스트 할 모델
-        :param metric_fn: 학습 성능 체크하기 위한 metric
-        :param test_dataloader: 테스트용 데이터로더
         :param device: GPU / CPU
         """
 
         # 테스트 할 모델
         self.model = model
-        # 학습 성능 체크하기 위한 metric
-        self.metric_fn = metric_fn
-        # 테스트용 데이터로더
-        self.test_dataloader = test_dataloader
         # GPU / CPU
         self.device = device
 
-    def running(self, checkpoint_file=None):
+    def running(self, input_path):
         """
         * 테스트 셋팅 및 진행
-        :param checkpoint_file: 불러올 체크포인트 파일
+        :param input_path: 입력 이미지 파일 경로
         :return: 테스트 수행됨
         """
 
-        # 불러올 체크포인트 파일 있을 경우 불러오기
-        if checkpoint_file:
-            state = utils.load_checkpoint(filepath=checkpoint_file)
-            self.model.load_state_dict(state[ConstVar.KEY_STATE_MODEL])
-
         # 테스트 진행
-        self._test()
+        y_pred = self._test(input_path=input_path)
 
-    def _test(self):
+        # classification 결과물을 하나의 class 로 변환
+        predicted_class = self._get_class(y_pred=y_pred)
+
+        # classification 결과 출력
+        print(predicted_class)
+
+    def _test(self, input_path):
         """
         * 테스트 진행
-        :return: score 기록
+        :param input_path: 입력 이미지 파일 경로
+        :return: 이미지 classification 결과 반환
         """
 
         # 모델을 테스트 모드로 전환
         self.model.eval()
 
-        # 배치 마다의 정확도 담을 리스트
-        batch_accuracy_list = list()
+        # 이미지 읽고 변환하기
+        img = self._read_img(filepath=input_path)
+        img = img.unsqueeze(dim=0)
 
-        for x, y in tqdm(self.test_dataloader, desc='test dataloader', leave=False):
+        # 이미지 classification 진행
+        img = img.to(self.device)
+        y_pred = self.model(img)
 
-            # 각 텐서를 해당 디바이스로 이동
-            x = x.to(self.device)
-            y = y.to(self.device)
+        return y_pred
 
-            # 순전파
-            y_pred = self.model(x)
+    @staticmethod
+    def _read_img(filepath):
+        """
+        * 이미지 읽고 변환하기
+        :param filepath: 읽어 올 이미지 파일 경로
+        :return: 이미지 읽어 변환 해줌
+        """
 
-            # 배치 마다의 정확도 계산
-            batch_accuracy_list.append(self.metric_fn(y_pred=y_pred,
-                                                      y=y))
+        # 데이터 변환 함수
+        transform = transforms.Compose([
+            transforms.Resize(size=ConstVar.RESIZE_SIZE),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=ConstVar.NORMALIZE_MEAN, std=ConstVar.NORMALIZE_STD)
+        ])
 
-        # score 기록
-        self.score = np.mean(batch_accuracy_list)
+        # 이미지 읽기 및 변환
+        img = transform(Image.open(fp=filepath))
+
+        return img
+
+    @staticmethod
+    def _get_class(y_pred):
+        """
+        * classification 결과물을 하나의 class 로 변환
+        :param y_pred: classification 결과물
+        :return: 변환된 class 값
+        """
+
+        # classification 결과물의 idx 값 추출
+        idx = torch.argmax(input=y_pred, dim=1).item()
+
+        # idx 에 해당하는 class 가져오기
+        predicted_class = utils.idx_to_class(idx=idx)
+
+        return predicted_class
