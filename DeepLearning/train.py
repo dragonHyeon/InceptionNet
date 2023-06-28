@@ -241,7 +241,7 @@ class Trainer:
         mean = torch.tensor(ConstVar.NORMALIZE_MEAN)
         std = torch.tensor(ConstVar.NORMALIZE_STD)
         plt_result_list = [(
-            (x.cpu().reshape(-1, 224, 224) * std[:, None, None] + mean[:, None, None]).permute(1, 2, 0),
+            (x.cpu().reshape(-1, ConstVar.RESIZE_SIZE, ConstVar.RESIZE_SIZE) * std[:, None, None] + mean[:, None, None]).permute(1, 2, 0),
             torch.argmax(input=y_pred, dim=1).item(),
             y.item()
         ) for x, y_pred, y in result_list]
